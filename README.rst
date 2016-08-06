@@ -2,7 +2,7 @@
 Twitag
 ######
 
-A simple tagging bot for Twitter. Mention the users 
+A simple tagging bot for Twitter.
 
 #######
 Install
