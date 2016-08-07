@@ -39,6 +39,13 @@ the ``main`` function,
 The bot will then present an authorization URL and prompt for a verifier code.
 Just retrieve the verifier code from that URL and you are good to go.
 
+Log levels can be configured by calling ``vom:config``,
+
+.. code-block:: lisp
+
+    CL-USER> (vom:config :twitag :debug)
+    CL-USER> (vom:config :twitag/twitter-api :debug)
+
 To tag someone on Twitter, you may tweet to the bot or send it direct messages.
 For example, a tweet saying
 
