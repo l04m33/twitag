@@ -12,7 +12,7 @@ Install
 
 2. Also clone `cl-async-oauth`_ into your ``local-projects`` directory;
 
-2. In your REPL (with Quicklisp already set-up),
+3. In your REPL (with Quicklisp already set-up),
 
 .. code-block:: lisp
 
