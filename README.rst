@@ -62,7 +62,7 @@ To run the tests,
 
 .. code-block:: lisp
 
-    CL-USER> (ql:quickload :prove)
+    CL-USER> (ql:quickload :twitag-test)
     ...
     CL-USER> (asdf:test-system :twitag)
 
