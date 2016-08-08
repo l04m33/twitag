@@ -10,7 +10,7 @@
 
 (in-package #:twitag-test)
 
-(plan 25)
+(plan 32)
 
 (ok
   (not
@@ -284,5 +284,63 @@
           #'blocking-p)))
     (is reply "@dummy 遮住了小本子不讓大家看~"
         "process-result - blocked")))
+
+(is
+  (twitag::trim-tags-str "@dummy #tag1 #tag2")
+  "@dummy #tag1 #tag2"
+  :test #'equal
+  "trim-tags-str - short string")
+
+(let* ((orig-str (with-output-to-string (output)
+                   (loop for n = (random 10000)
+                         for tag = "@dummy :" then (format nil " #測試~a" n)
+                         for total-len = (length "@dummy :") then (+ total-len (length tag))
+                         do (write-string tag output)
+                         when (> total-len 140) return nil)))
+       (trimmed-str (twitag::trim-tags-str orig-str)))
+
+  (ok
+    (and (> (length orig-str) 140)
+         (<= (length trimmed-str) 140))
+    "trim-tags-str - long string length")
+
+  (is
+    (subseq trimmed-str (- (length trimmed-str) (length " ....")))
+    " ...."
+    :test #'equal
+    "trim-tags-str - ends with \" ....\""
+    )
+
+  (is
+    (aref orig-str (- (length trimmed-str) 5))
+    #\space
+    "trim-tags-str - trimmed at space character"))
+
+(let* ((orig-str (with-output-to-string (output)
+                   (loop for n = (random 10000)
+                         for tag = "@dummy : #" then (format nil "測試~a" n)
+                         for total-len = (length "@dummy :") then (+ total-len (length tag))
+                         do (write-string tag output)
+                         when (> total-len 140) return nil)))
+       (trimmed-str (twitag::trim-tags-str orig-str)))
+  (is trimmed-str "@dummy : ...."
+      :test #'equal
+      "trim-tags-str - long tag without spaces"))
+
+(let* ((orig-str (with-output-to-string (output)
+                   (loop for n = (random 10000)
+                         for tag = "@dummy:#" then (format nil "測試~a" n)
+                         for total-len = (length "@dummy :") then (+ total-len (length tag))
+                         do (write-string tag output)
+                         when (> total-len 140) return nil)))
+       (trimmed-str (twitag::trim-tags-str orig-str)))
+  (is (length trimmed-str) 140
+      "trim-tags-str - length of long string without spaces")
+  (is
+    (subseq trimmed-str (- (length trimmed-str) (length "....")))
+    "...."
+    :test #'equal
+    "trim-tags-str - long string without spaces ends with \"....\""))
+
 
 (finalize)

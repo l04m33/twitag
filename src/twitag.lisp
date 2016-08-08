@@ -22,6 +22,31 @@
               nil)))
 
 
+(defun trim-twitter-text (text)
+  (if (> (length text) 140)
+    (concatenate 'string (subseq text 0 136) "....")
+    text))
+
+
+(defun trim-tags-str (text)
+  (labels ((find-last-space (text)
+             (loop for c across text
+                   for i from 0
+                   with last-space = -1
+                   do (cond
+                        ((>= i 136)
+                         (return-from find-last-space last-space))
+                        ((eql #\space (aref text i))
+                         (setf last-space i)))
+                   finally (return last-space))))
+    (if (> (length text) 140)
+      (let ((last-space (find-last-space text)))
+        (if (>= last-space 0)
+          (concatenate 'string (subseq text 0 last-space) " ....")
+          (trim-twitter-text text)))
+      text)))
+
+
 (defun filter-self-mention (my-id mentions)
   (loop for m in mentions
         when (/= my-id (access-json m :id))
@@ -108,7 +133,7 @@
                                         (access-json reply-user :id)))
                               nil
                               reply-user)))
-                     (build-status-reply u bc-mentions text)))
+                     (trim-tags-str (build-status-reply u bc-mentions text))))
                  (replier (text)
                    (statuses-update session text reply-status-id))
                  (local-blocking-p (user-id)
@@ -137,7 +162,7 @@
                         (t (e) '(:error e)))))
         (labels ((body-text-builder (text &key cur-user-id broadcast)
                    (declare (ignore cur-user-id broadcast))
-                   text)
+                   (trim-tags-str text))
                  (replier (text)
                    (direct-messages-new session reply-id text))
                  (local-blocking-p (user-id)
@@ -178,15 +203,11 @@
                              (msg-user-blocking user-screen-name)
                              :broadcast nil))
            (let* ((tags-str (build-tags-str u))
-                  (full-reply-str (funcall body-text-builder
-                                           tags-str
-                                           :cur-user-id user-id
-                                           :broadcast nil))
-                  (trimmed-str
-                    (if (> (length full-reply-str) 140)
-                      (concatenate 'string (subseq full-reply-str 0 136) "....")
-                      full-reply-str)))
-             (funcall replier trimmed-str))))))
+                  (reply-str (funcall body-text-builder
+                                      tags-str
+                                      :cur-user-id user-id
+                                      :broadcast nil)))
+             (funcall replier reply-str))))))
 
     ((eql :error (car result))
      (vom:debug "process-result: error: ~s" (cadr result)))))
