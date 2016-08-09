@@ -5,6 +5,7 @@
 
 
 (defun init-db (db-file worker-count)
+  (vom:debug "Connecting to DB file: ~s" db-file)
   (let ((*db* (connect db-file)))
     (create-tables)
     (setf *kernel*
@@ -17,6 +18,7 @@
 
 
 (defun close-db (db)
+  (vom:debug "Closing DB: ~s" db)
   (end-kernel :wait t)
   (disconnect db))
 

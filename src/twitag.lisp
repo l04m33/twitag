@@ -359,9 +359,20 @@
      #'(lambda (msg) (funcall cb msg state))))
 
 
+(defun install-signal-handlers ()
+  (signal-handler
+    +sigint+
+    (lambda (sig)
+      (when (= sig +sigint+)
+        (vom:debug "SIGINT received. Cleaning up...")
+        (free-signal-handler +sigint+)
+        (exit-event-loop)))))
+
+
 (defun main (consumer-key consumer-secret db-file)
   (with-db (db-file 1)
     (with-event-loop (:catch-app-errors t)
+      (install-signal-handlers)
       (let ((session (make-twitter-session consumer-key consumer-secret)))
         (alet ((login-result
                  (catched-call #'login session "oob"
