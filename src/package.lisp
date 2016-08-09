@@ -49,8 +49,6 @@
   (:use #:cl
         #:cl-async
         #:blackbird
-        #:sqlite
-        #:bordeaux-threads
         #:twitag/twitter-api
         #:twitag/db)
   (:export #:main))
