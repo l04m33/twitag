@@ -36,13 +36,16 @@
      (user_id INTEGER,
       tag     TEXT,
       count   INTEGER,
+      updated TEXT,
       UNIQUE(user_id, tag));"))
 
 
 (defun insert-user-tag (user-id tag notifier)
   (execute-non-query
-    *db* "INSERT OR REPLACE INTO user_tag (user_id, tag, count)
-          VALUES (?, ?, COALESCE((SELECT count + 1 FROM user_tag WHERE user_id = ? and tag = ?), 1));"
+    *db* "INSERT OR REPLACE INTO user_tag (user_id, tag, count, updated)
+          VALUES (?, ?,
+                  COALESCE((SELECT count + 1 FROM user_tag WHERE user_id = ? and tag = ?), 1),
+                  STRFTIME('%Y-%m-%d %H:%M:%f', 'now'));"
     user-id tag user-id tag)
   (let ((new-count (execute-single
                      *db* "SELECT count FROM user_tag WHERE user_id = ? AND tag = ?;"
@@ -65,7 +68,7 @@
 
 (defun select-user-tags (user-id notifier)
   (let ((tags (execute-to-list
-                *db* "SELECT tag, count FROM user_tag WHERE user_id = ? ORDER BY count DESC;"
+                *db* "SELECT tag, count FROM user_tag WHERE user_id = ? ORDER BY count DESC, updated DESC;"
                 user-id)))
     (trigger-notifier notifier)
     tags))
