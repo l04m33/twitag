@@ -16,6 +16,8 @@
            #:*friendships-create-url*
            #:*direct-messages-new-url*
            #:*statuses-user-timeline-url*
+           #:*statuses-update-url*
+           #:*users-lookup-url*
            #:make-twitter-session
            #:login
            #:cli-oob-verifier-cb
@@ -25,7 +27,8 @@
            #:friendships-create
            #:direct-messages-new
            #:user-blocking-p
-           #:statuses-update))
+           #:statuses-update
+           #:users-lookup))
 
 
 (defpackage #:twitag/db

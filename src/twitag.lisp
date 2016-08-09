@@ -362,11 +362,11 @@
 (defun install-signal-handlers ()
   (signal-handler
     +sigint+
-    (lambda (sig)
-      (when (= sig +sigint+)
-        (vom:debug "SIGINT received. Cleaning up...")
-        (free-signal-handler +sigint+)
-        (exit-event-loop)))))
+    #'(lambda (sig)
+        (when (= sig +sigint+)
+          (vom:debug "SIGINT received. Cleaning up...")
+          (free-signal-handler +sigint+)
+          (exit-event-loop)))))
 
 
 (defun main (consumer-key consumer-secret db-file)

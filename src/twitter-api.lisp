@@ -19,6 +19,8 @@
   "Twitter user timeline API.")
 (defvar *statuses-update-url* "https://api.twitter.com/1.1/statuses/update.json"
   "Twitter tweeting API.")
+(defvar *users-lookup-url* "https://api.twitter.com/1.1/users/lookup.json"
+  "Twitter user lookup API.")
 
 
 (defun make-twitter-session (consumer-key consumer-secret)
@@ -180,3 +182,14 @@
     (when (resp-error resp)
       (error (format nil "request failed: ~s" (nth 1 resp))))
     t))
+
+
+(defun users-lookup (session user-id-list)
+  (alet* ((user-ids-str (format t "~{~a~^,~}" user-id-list))
+          (resp (request
+                  session *users-lookup-url*
+                  :method :post
+                  :params `(("user_id" . ,user-ids-str)))))
+    (when (resp-error resp)
+      (error (format nil "request failed: ~s" (nth 1 resp))))
+    (nth 1 resp)))
