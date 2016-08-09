@@ -16,7 +16,7 @@
 
 (defparameter *test-db-file* "./test.db")
 
-(plan 9)
+(plan 11)
 
 (if (probe-file *test-db-file*)
   (delete-file *test-db-file*))
@@ -42,6 +42,12 @@
 
   (alet ((tags (get-user-tags 1)))
     (is tags '(("テスト" 3) ("測試" 2) ("test" 1)) :test #'equal "get-user-tags"))
+
+  (alet ((users (get-tagged-users "test")))
+    (is users '(2 1) :test #'equal "get-tagged-users"))
+
+  (alet ((users (get-tagged-users "測試")))
+    (is users '(1) :test #'equal "get-tagged-users - alternative tag"))
   
   (alet ((res (remove-user-tag 1 "測試")))
     (declare (ignore res))

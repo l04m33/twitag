@@ -121,3 +121,22 @@
                            (vom:debug "Removed all tags for user ~s" user-id)
                            (resolve nil)))))
       (submit-task chan #'delete-all-user-tags user-id notifier))))
+
+
+(defun select-tagged-users (tag notifier)
+  (let ((users (execute-to-list
+                 *db* "SELECT user_id FROM user_tag WHERE tag LIKE ? ORDER BY count DESC, updated DESC;"
+                 (format nil "%~a%" tag))))
+    (trigger-notifier notifier)
+    users))
+
+
+(defun get-tagged-users (tag)
+  (with-promise (resolve reject)
+    (let* ((chan (make-channel))
+           (notifier (make-notifier
+                       #'(lambda ()
+                           (let ((users (receive-result chan)))
+                             (vom:debug "Users tagged ~s: ~s" tag users)
+                             (resolve (loop for u in users collect (car u))))))))
+      (submit-task chan #'select-tagged-users tag notifier))))

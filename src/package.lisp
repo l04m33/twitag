@@ -42,7 +42,8 @@
            #:add-user-tag
            #:get-user-tags
            #:remove-user-tag
-           #:remove-all-user-tags))
+           #:remove-all-user-tags
+           #:get-tagged-users))
 
 
 (defpackage #:twitag
