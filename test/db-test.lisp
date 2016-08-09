@@ -16,7 +16,7 @@
 
 (defparameter *test-db-file* "./test.db")
 
-(plan 11)
+(plan 12)
 
 (if (probe-file *test-db-file*)
   (delete-file *test-db-file*))
@@ -48,6 +48,10 @@
 
   (alet ((users (get-tagged-users "測試")))
     (is users '(1) :test #'equal "get-tagged-users - alternative tag"))
+
+  (add-user-tag 3 "AnotherTestingTag")
+  (alet ((users (get-tagged-users "test")))
+    (is users '(3 2 1) :test #'equal "get-tagged-users - partial tag"))
   
   (alet ((res (remove-user-tag 1 "測試")))
     (declare (ignore res))
