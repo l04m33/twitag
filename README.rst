@@ -51,8 +51,8 @@ For example, a tweet saying
 
     @TwitagBot @someone #funny
 
-Will assign the user ``someone`` a ``funny`` tag. Things other than hashtags are
-ignored, so you may instead say
+Will assign the user ``someone`` a ``funny`` tag. Things other than mentioned
+users and hashtags are ignored, so you may instead say
 
     Hey @TwitagBot, @someone is really #funny!
 
@@ -60,6 +60,14 @@ To see someone's tags, tweet to the bot (or send it direct messages) again, ment
 the user you want to see, with NO hashtags,
 
     Hey @TwitagBot, tell me about @someone.
+
+To search for tagged users, send some tags to the bot instead,
+
+    Hey @TwitagBot, is there any #funny guy?
+
+The bot will then randomly choose at most 10 user names for you. When using tweets
+to show these names, the bot will skip the ``@`` so that it won't annoy the users
+mentioned.
 
 #####
 Tests
