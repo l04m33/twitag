@@ -7,6 +7,8 @@
 
 (def-msg msg-empty-tags (screen-name)
   "似乎沒人關心 @~a Q_Q")
+(def-msg msg-empty-users ()
+  "沒有這樣的人哦~~")
 (def-msg msg-error ()
   "我~~出~~錯~~啦~~讓~~我~~一~~個~~人~~靜~~靜~~")
 (def-msg msg-tag-added ()
@@ -116,13 +118,15 @@
 
 
 (defun build-users-str (user-list &key (screen-name-prefix ""))
-  (with-output-to-string (output)
-    (loop for u in user-list
-          for first = t then nil
-          do (format output "~a~a~a"
-                     (if first "" " ")
-                     screen-name-prefix
-                     (access-json u :screen--name)))))
+  (if user-list
+    (with-output-to-string (output)
+      (loop for u in user-list
+            for first = t then nil
+            do (format output "~a~a~a"
+                       (if first "" " ")
+                       screen-name-prefix
+                       (access-json u :screen--name))))
+    (msg-empty-users)))
 
 
 (defun build-status-reply (user mentions text)
@@ -160,8 +164,6 @@
                               nil
                               reply-user)))
                      (trim-tags-str (build-status-reply u bc-mentions text))))
-                 (local-build-users-str (user-list)
-                   (build-users-str user-list))
                  (replier (text)
                    (statuses-update session text reply-status-id))
                  (local-blocking-p (user-id)
@@ -169,7 +171,7 @@
           (process-result
             result
             #'body-text-builder
-            #'local-build-users-str
+            #'build-users-str
             #'replier
             #'local-blocking-p))))))
 
