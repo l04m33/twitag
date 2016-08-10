@@ -185,7 +185,7 @@
 
 
 (defun users-lookup (session user-id-list)
-  (alet* ((user-ids-str (format t "~{~a~^,~}" user-id-list))
+  (alet* ((user-ids-str (format nil "~{~a~^,~}" user-id-list))
           (resp (request
                   session *users-lookup-url*
                   :method :post

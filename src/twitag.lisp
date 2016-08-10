@@ -22,6 +22,22 @@
               nil)))
 
 
+(defun choice-n (lst n)
+  (let ((lst-len (length lst)))
+    (mapcar
+      #'(lambda (d) (nth 0 d))
+      (subseq
+        (sort
+          (mapcar
+            #'list
+            lst
+            (loop for n from 0 below lst-len
+                  collect (random lst-len)))
+          #'(lambda (d1 d2)
+              (< (nth 1 d1) (nth 1 d2))))
+        0 (min n lst-len)))))
+
+
 (defun trim-twitter-text (text)
   (if (> (length text) 140)
     (concatenate 'string (subseq text 0 136) "....")
@@ -99,6 +115,16 @@
     (msg-empty-tags (access-json user-obj :screen-name))))
 
 
+(defun build-users-str (user-list &key (screen-name-prefix ""))
+  (with-output-to-string (output)
+    (loop for u in user-list
+          for first = t then nil
+          do (format output "~a~a~a"
+                     (if first "" " ")
+                     screen-name-prefix
+                     (access-json u :screen--name)))))
+
+
 (defun build-status-reply (user mentions text)
   (with-output-to-string (output)
     (when user
@@ -124,7 +150,7 @@
               (mentions (filter-self-mention my-id all-mentions))
               (hashtags (access-json message :entities :hashtags))
               (result (catcher
-                        (handle-mentions-and-hashtags mentions hashtags)
+                        (handle-mentions-and-hashtags mentions hashtags session)
                         (t (e) '(:error e)))))
         (labels ((body-text-builder (text &key cur-user-id broadcast)
                    (let ((bc-mentions (if broadcast mentions nil))
@@ -134,11 +160,18 @@
                               nil
                               reply-user)))
                      (trim-tags-str (build-status-reply u bc-mentions text))))
+                 (local-build-users-str (user-list)
+                   (build-users-str user-list))
                  (replier (text)
                    (statuses-update session text reply-status-id))
                  (local-blocking-p (user-id)
                    (blocking-p session user-id #'body-text-builder #'replier)))
-          (process-result result #'body-text-builder #'replier #'local-blocking-p))))))
+          (process-result
+            result
+            #'body-text-builder
+            #'local-build-users-str
+            #'replier
+            #'local-blocking-p))))))
 
 
 (defun dm-to-self-p (my-id message)
@@ -158,16 +191,23 @@
               (hashtags (access-json
                           message :direct--message :entities :hashtags))
               (result (catcher
-                        (handle-mentions-and-hashtags mentions hashtags)
+                        (handle-mentions-and-hashtags mentions hashtags session)
                         (t (e) '(:error e)))))
         (labels ((body-text-builder (text &key cur-user-id broadcast)
                    (declare (ignore cur-user-id broadcast))
                    (trim-tags-str text))
+                 (local-build-users-str (user-list)
+                   (build-users-str user-list :screen-name-prefix "@"))
                  (replier (text)
                    (direct-messages-new session reply-id text))
                  (local-blocking-p (user-id)
                    (blocking-p session user-id #'body-text-builder #'replier)))
-          (process-result result #'body-text-builder #'replier #'local-blocking-p))))))
+          (process-result
+            result
+            #'body-text-builder
+            #'local-build-users-str
+            #'replier
+            #'local-blocking-p))))))
 
 
 (defun blocking-p (session user-id body-text-builder replier)
@@ -180,7 +220,7 @@
        (error e))))
 
 
-(defun process-result (result body-text-builder replier blocking-p)
+(defun process-result (result body-text-builder build-users-str replier blocking-p)
   (cond
     ((null result)
      (vom:debug "process-result: No result"))
@@ -209,11 +249,18 @@
                                       :broadcast nil)))
              (funcall replier reply-str))))))
 
+    ((eql :get-tagged-users (car result))
+     (vom:debug "process-result: Tagged users: ~s" (length (cdr result)))
+     (funcall replier
+              (funcall body-text-builder
+                       (funcall build-users-str (cdr result))
+                       :broadcast nil)))
+
     ((eql :error (car result))
      (vom:debug "process-result: error: ~s" (cadr result)))))
 
 
-(defun handle-mentions-and-hashtags (mentions hashtags)
+(defun handle-mentions-and-hashtags (mentions hashtags session)
   (with-promise (resolve reject)
     (cond
       ((and mentions hashtags)
@@ -256,6 +303,19 @@
                     mentions)))
            (resolve `(:get-user-tags . ,user-tags)))
          (t (e) (reject e))))
+
+      (hashtags
+        (catcher
+          (alet* ((tag-list (mapcar #'(lambda (ht) (access-json ht :text)) hashtags))
+                  (user-id-list (get-tagged-users tag-list))
+                  (user-id-count (length user-id-list))
+                  (selected-user-ids (choice-n user-id-list 10))
+                  (users
+                    (if selected-user-ids
+                      (users-lookup session selected-user-ids)
+                      nil)))
+            (resolve `(:get-tagged-users . ,users)))
+          (t (e) (reject e))))
 
       (t
        (resolve nil)))))
@@ -369,6 +429,10 @@
           (exit-event-loop)))))
 
 
+(defun remove-signal-handlers ()
+  (free-signal-handler +sigint+))
+
+
 (defun main (consumer-key consumer-secret db-file)
   (with-db (db-file 1)
     (with-event-loop (:catch-app-errors t)
@@ -389,4 +453,5 @@
                              (make-message-cb my-user-id my-screen-name
                                               session #'message-cb))))
                         (vom:debug "streaming-result = ~s"
-                                   streaming-result)))))))))
+                                   streaming-result)
+                        (remove-signal-handlers)))))))))
