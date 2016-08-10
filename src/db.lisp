@@ -123,20 +123,37 @@
       (submit-task chan #'delete-all-user-tags user-id notifier))))
 
 
-(defun select-tagged-users (tag notifier)
-  (let ((users (execute-to-list
-                 *db* "SELECT user_id FROM user_tag WHERE tag LIKE ? ORDER BY count DESC, updated DESC;"
-                 (format nil "%~a%" tag))))
+(defun select-tagged-users (tags notifier)
+  (let* ((where-clause
+           (with-output-to-string (output)
+             (loop for n from 0 below (length tags)
+                   for first = t then nil
+                   do (format output "~a tags LIKE ?" (if first "" " AND")))))
+         (patterns (mapcar #'(lambda (tag) (format nil "%~a%" tag)) tags))
+         (users (apply
+                  #'execute-to-list
+                  *db* (format
+                         nil
+                         "SELECT user_id FROM
+                              (SELECT user_id,
+                                      GROUP_CONCAT(tag, ',') AS tags,
+                                      SUM(count) AS total_count,
+                                      MAX(updated) AS last_updated
+                               FROM user_tag GROUP BY user_id)
+                          WHERE ~a
+                          ORDER BY total_count DESC, last_updated DESC;"
+                         where-clause)
+                  patterns)))
     (trigger-notifier notifier)
     users))
 
 
-(defun get-tagged-users (tag)
+(defun get-tagged-users (tags)
   (with-promise (resolve reject)
     (let* ((chan (make-channel))
            (notifier (make-notifier
                        #'(lambda ()
                            (let ((users (receive-result chan)))
-                             (vom:debug "Users tagged ~s: ~s" tag users)
+                             (vom:debug "Users tagged ~s: ~s" tags users)
                              (resolve (loop for u in users collect (car u))))))))
-      (submit-task chan #'select-tagged-users tag notifier))))
+      (submit-task chan #'select-tagged-users tags notifier))))

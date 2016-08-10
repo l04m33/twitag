@@ -16,7 +16,7 @@
 
 (defparameter *test-db-file* "./test.db")
 
-(plan 12)
+(plan 14)
 
 (if (probe-file *test-db-file*)
   (delete-file *test-db-file*))
@@ -43,15 +43,21 @@
   (alet ((tags (get-user-tags 1)))
     (is tags '(("テスト" 3) ("測試" 2) ("test" 1)) :test #'equal "get-user-tags"))
 
-  (alet ((users (get-tagged-users "test")))
-    (is users '(2 1) :test #'equal "get-tagged-users"))
+  (alet ((users (get-tagged-users '("test"))))
+    (is users '(1 2) :test #'equal "get-tagged-users"))
 
-  (alet ((users (get-tagged-users "測試")))
+  (alet ((users (get-tagged-users '("測試"))))
     (is users '(1) :test #'equal "get-tagged-users - alternative tag"))
 
   (add-user-tag 3 "AnotherTestingTag")
-  (alet ((users (get-tagged-users "test")))
-    (is users '(3 2 1) :test #'equal "get-tagged-users - partial tag"))
+  (alet ((users (get-tagged-users '("tes"))))
+    (is users '(1 3 2) :test #'equal "get-tagged-users - partial tag"))
+
+  (alet ((users (get-tagged-users '("test" "測試"))))
+    (is users '(1) :test #'equal "get-tagged-users - multiple tags"))
+
+  (alet ((users (get-tagged-users '("test" "does_not_exist"))))
+    (is users '() :test #'equal "get-tagged-users - multiple tags without a match"))
   
   (alet ((res (remove-user-tag 1 "測試")))
     (declare (ignore res))
