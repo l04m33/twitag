@@ -435,6 +435,30 @@
   (free-signal-handler +sigint+))
 
 
+(defun streaming-with-retries (session my-user-id my-screen-name
+                               &optional retries (retry-interval 2))
+  (labels ((do-streaming (remaining-retries)
+             (if (and (integerp remaining-retries)
+                      (<= retries 0))
+               (progn
+                 (vom:debug "No more retries, abort.")
+                 (remove-signal-handlers))
+               (alet ((streaming-result
+                        (catched-call
+                          #'start-streaming
+                          session
+                          (make-message-cb
+                            my-user-id my-screen-name
+                            session #'message-cb))))
+                 (vom:debug "streaming-result = ~s" streaming-result)
+                 (vom:debug "Reconnecting in ~a second(s)..." retry-interval)
+                 (with-delay (retry-interval)
+                   (do-streaming (if (integerp retries)
+                                   (1- retries)
+                                   retries)))))))
+    (do-streaming retries)))
+
+
 (defun main (consumer-key consumer-secret db-file)
   (with-db (db-file 1)
     (with-event-loop (:catch-app-errors t)
@@ -448,12 +472,5 @@
               (when login-result
                 (let ((my-user-id (nth 0 login-result))
                       (my-screen-name (nth 1 login-result)))
-                  (alet ((streaming-result
-                           (catched-call
-                             #'start-streaming
-                             session
-                             (make-message-cb my-user-id my-screen-name
-                                              session #'message-cb))))
-                        (vom:debug "streaming-result = ~s"
-                                   streaming-result)
-                        (remove-signal-handlers)))))))))
+                  (catched-call #'streaming-with-retries
+                                session my-user-id my-screen-name))))))))
