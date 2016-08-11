@@ -9,7 +9,6 @@ sbcl --noinform \
      --load "$QUICKLISP_ENV_SETUP" \
      --eval "(ql:quickload :twitag)" \
      --eval "(vom:config :twitag :debug)" \
-     --eval "(vom:config :twitag/twitter-api :debug)" \
      --eval "(vom:config :twitag/db :debug)" \
      --eval "(twitag:main \"$CONSUMER_KEY\" \"$CONSUMER_SECRET\" \"$DB_FILE\")" \
      --quit

@@ -10,7 +10,6 @@
   :components ((:module "test"
                 :pathname "test"
                 :components (#+sbcl (:file "test-with-coverage")
-                             (:test-file "twitter-api-test")
                              (:test-file "twitag-test")
                              (:test-file "db-test"))))
   :perform (test-op :after (op c)

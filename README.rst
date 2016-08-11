@@ -44,7 +44,7 @@ Log levels can be configured by calling ``vom:config``,
 .. code-block:: lisp
 
     CL-USER> (vom:config :twitag :debug)
-    CL-USER> (vom:config :twitag/twitter-api :debug)
+    CL-USER> (vom:config :twitag/db :debug)
 
 To tag someone on Twitter, you may tweet to the bot or send it direct messages.
 For example, a tweet saying
