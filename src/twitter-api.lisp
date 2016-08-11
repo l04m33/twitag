@@ -23,6 +23,13 @@
   "Twitter user lookup API.")
 
 
+(defun catched-call (func &rest args)
+  (catcher (apply func args)
+           (t (e)
+              (vom:error "~s" e)
+              nil)))
+
+
 (defun make-twitter-session (consumer-key consumer-secret)
   (make-session :consumer-key consumer-key
                 :consumer-secret consumer-secret
@@ -125,6 +132,24 @@
     (when (resp-error resp)
       (error (format nil "streaming-request failed: ~s" (nth 1 resp))))
     t))
+
+
+(defun call-with-retries (fun &optional clean-up-fun retries (retry-interval 2))
+  (labels ((do-call-fun (remaining-retries)
+             (if (and (integerp remaining-retries)
+                      (<= retries 0))
+               (progn
+                 (vom:debug "No more retries, stop.")
+                 (if clean-up-fun
+                   (catched-call clean-up-fun)))
+               (alet ((result (catched-call fun)))
+                 (vom:debug "call-with-retries: ~s: result = ~s" fun result)
+                 (vom:debug "Retrying in ~a second(s)..." retry-interval)
+                 (with-delay (retry-interval)
+                   (do-call-fun (if (integerp retries)
+                                   (1- retries)
+                                   retries)))))))
+    (do-call-fun retries)))
 
 
 (defun friendships-create (session target-id)

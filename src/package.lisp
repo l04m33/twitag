@@ -24,6 +24,7 @@
            #:resp-error
            #:access-json
            #:start-streaming
+           #:call-with-retries
            #:friendships-create
            #:direct-messages-new
            #:user-blocking-p
