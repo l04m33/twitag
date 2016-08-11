@@ -7,7 +7,6 @@
                #:cl-async-oauth
                #:blackbird
                #:sqlite
-               #:bordeaux-threads
                #:lparallel
                #:babel
                #:cl-json
