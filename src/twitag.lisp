@@ -40,73 +40,6 @@
         0 (min n lst-len)))))
 
 
-(defun trim-twitter-text (text)
-  (if (> (length text) 140)
-    (concatenate 'string (subseq text 0 136) "....")
-    text))
-
-
-(defun trim-tags-str (text)
-  (labels ((find-last-space (text)
-             (loop for c across text
-                   for i from 0
-                   with last-space = -1
-                   do (cond
-                        ((>= i 136)
-                         (return-from find-last-space last-space))
-                        ((eql #\space (aref text i))
-                         (setf last-space i)))
-                   finally (return last-space))))
-    (if (> (length text) 140)
-      (let ((last-space (find-last-space text)))
-        (if (>= last-space 0)
-          (concatenate 'string (subseq text 0 last-space) " ....")
-          (trim-twitter-text text)))
-      text)))
-
-
-(defun filter-self-mention (my-id mentions)
-  (loop for m in mentions
-        when (/= my-id (access-json m :id))
-        collect m))
-
-
-(defun rt-text-p (mentions text)
-  (labels ((look-back-for-rt (text idx)
-             (if (and (>= idx 0) (eql (aref text idx) #\space))
-               (look-back-for-rt text (1- idx))
-               (if (> idx 0)
-                 (or (and (eql #\R (aref text (1- idx))) (eql #\T (aref text idx)))
-                     (and (eql #\r (aref text (1- idx))) (eql #\t (aref text idx))))
-                 nil)))
-           (mention-rt-p (mentions)
-             (if mentions
-               (let* ((m (car mentions))
-                      (m-range (access-json m :indices))
-                      (m-start (nth 0 m-range)))
-                 (or (look-back-for-rt text (1- m-start))
-                     (mention-rt-p (cdr mentions))))
-               nil)))
-    (mention-rt-p mentions)))
-
-
-(defun rt-p (message)
-  (or (access-json message :retweeted--status)
-      (rt-text-p (access-json message :entities :user--mentions)
-                 (access-json message :text))))
-
-
-(defun mentioned-p (user-id mentions)
-  (dolist (m mentions nil)
-    (when (= user-id (access-json m :id))
-      (return-from mentioned-p m))))
-
-
-(defun self-status-p (my-id message)
-  (let ((user-id (access-json message :user :id)))
-    (= user-id my-id)))
-
-
 (defun build-tags-str (user-obj)
   (if (access-json user-obj :tags)
     (apply #'concatenate 'string
@@ -129,29 +62,14 @@
     (msg-empty-users)))
 
 
-(defun build-status-reply (user mentions text)
-  (with-output-to-string (output)
-    (when user
-      (format output "@~a " (access-json user :screen--name)))
-    (loop for m in mentions
-          with user-list = (if user
-                             `(,(access-json user :screen--name))
-                             nil)
-          do (let ((cur-screen-name (access-json m :screen--name)))
-               (when (not (find cur-screen-name user-list :test #'equal))
-                 (push cur-screen-name user-list)
-                 (format output "@~a " cur-screen-name))))
-    (format output "~a" text)))
-
-
 (defun handle-status-message (message my-id session)
   (let ((all-mentions (access-json message :entities :user--mentions)))
-    (when (and (not (self-status-p my-id message))
-               (mentioned-p my-id all-mentions)
-               (not (rt-p message)))
+    (when (and (not (user-status-p my-id message))
+               (user-mentioned-p my-id all-mentions)
+               (not (status-rt-p message)))
       (alet* ((reply-user (access-json message :user))
               (reply-status-id (access-json message :id))
-              (mentions (filter-self-mention my-id all-mentions))
+              (mentions (filter-user-mention my-id all-mentions))
               (hashtags (access-json message :entities :hashtags))
               (result (catcher
                         (handle-mentions-and-hashtags mentions hashtags session)
@@ -163,7 +81,7 @@
                                         (access-json reply-user :id)))
                               nil
                               reply-user)))
-                     (trim-tags-str (build-status-reply u bc-mentions text))))
+                     (trim-spaced-text (build-status-text u bc-mentions text))))
                  (replier (text)
                    (statuses-update session text reply-status-id))
                  (local-blocking-p (user-id)
@@ -176,20 +94,13 @@
             #'local-blocking-p))))))
 
 
-(defun dm-to-self-p (my-id message)
-  (let ((target-id (access-json
-                     message
-                     :direct--message :recipient :id)))
-    (= target-id my-id)))
-
-
 (defun handle-direct-message (message my-id session)
   (let ((all-mentions (access-json
                         message
                         :direct--message :entities :user--mentions)))
-    (when (dm-to-self-p my-id message)
+    (when (dm-to-user-p my-id message)
       (alet* ((reply-id (access-json message :direct--message :sender :id))
-              (mentions (filter-self-mention my-id all-mentions))
+              (mentions (filter-user-mention my-id all-mentions))
               (hashtags (access-json
                           message :direct--message :entities :hashtags))
               (result (catcher
@@ -197,7 +108,7 @@
                         (t (e) '(:error e)))))
         (labels ((body-text-builder (text &key cur-user-id broadcast)
                    (declare (ignore cur-user-id broadcast))
-                   (trim-tags-str text))
+                   (trim-spaced-text text))
                  (local-build-users-str (user-list)
                    (build-users-str user-list :screen-name-prefix "@"))
                  (replier (text)
