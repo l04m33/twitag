@@ -34,7 +34,7 @@
             #'list
             lst
             (loop for n from 0 below lst-len
-                  collect (random lst-len)))
+                  collect (random 1.0)))
           #'(lambda (d1 d2)
               (< (nth 1 d1) (nth 1 d2))))
         0 (min n lst-len)))))
