@@ -10,7 +10,8 @@ Install
 
 1. Clone this repo into your ``<quicklisp-dir>/local-projects`` directory;
 
-2. Also clone `cl-async-oauth`_ into your ``local-projects`` directory;
+2. Also clone `cl-async-oauth`_ and `cl-async-twitter`_ into your
+   ``local-projects`` directory;
 
 3. In your REPL (with Quicklisp already set-up),
 
@@ -19,6 +20,7 @@ Install
     CL-USER> (ql:quickload :twitag)
 
 .. _cl-async-oauth: https://github.com/l04m33/cl-async-oauth
+.. _cl-async-oauth: https://github.com/l04m33/cl-async-twitter
 
 #####
 Usage
