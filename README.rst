@@ -20,7 +20,7 @@ Install
     CL-USER> (ql:quickload :twitag)
 
 .. _cl-async-oauth: https://github.com/l04m33/cl-async-oauth
-.. _cl-async-oauth: https://github.com/l04m33/cl-async-twitter
+.. _cl-async-twitter: https://github.com/l04m33/cl-async-twitter
 
 #####
 Usage
