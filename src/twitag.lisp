@@ -346,24 +346,77 @@
   (free-signal-handler +sigint+))
 
 
-(defun main (consumer-key consumer-secret db-file)
-  (with-db (db-file 1)
-    (with-event-loop (:catch-app-errors t)
-      (install-signal-handlers)
-      (let ((session (make-twitter-session consumer-key consumer-secret)))
-        (alet ((login-result
-                 (catched-call #'login session "oob"
-                               (cli-oob-verifier-cb session))))
-              (vom:debug "login-result = ~s" login-result)
+(defun read-config (config-file)
+  (with-open-file (conf config-file :direction :input)
+    (let ((config (read conf)))
+      (values
+       config
+       (access-json config :consumer-key)
+       (access-json config :consumer-secret)
+       (access-json config :access-token)
+       (access-json config :access-token-secret)
+       (access-json config :user-id)
+       (access-json config :screen-name)
+       (access-json config :db-file)))))
 
-              (when login-result
-                (let ((my-user-id (nth 0 login-result))
-                      (my-screen-name (nth 1 login-result)))
-                  (call-with-retries
-                    #'(lambda ()
-                        (start-streaming
-                          session
-                          (make-message-cb
-                            my-user-id my-screen-name
-                            session #'message-cb)))
-                    #'remove-signal-handlers))))))))
+
+(defun build-config (config-plist)
+  (labels ((rec (rest acc)
+             (if rest
+                 (rec (cddr rest) (cons `(,(car rest) . ,(cadr rest)) acc))
+                 acc)))
+    (rec config-plist '())))
+
+
+(defun write-config (config-file &rest config-plist)
+  (with-open-file (conf config-file :direction :output :if-exists :supersede)
+    (write (build-config config-plist) :stream conf)))
+
+
+(defun main (config-file)
+  (multiple-value-bind (config
+                        consumer-key consumer-secret
+                        access-token access-token-secret
+                        my-user-id my-screen-name
+                        db-file)
+      (read-config config-file)
+    (with-db (db-file 1)
+      (with-event-loop (:catch-app-errors t)
+        (install-signal-handlers)
+        (let ((session
+                (make-twitter-session consumer-key consumer-secret
+                                      access-token access-token-secret)))
+          (if (and access-token access-token-secret
+                   my-user-id my-screen-name)
+            (call-with-retries
+              #'(lambda ()
+                  (start-streaming
+                    session
+                    (make-message-cb
+                      my-user-id my-screen-name
+                      session #'message-cb)))
+              #'remove-signal-handlers)
+            (alet ((login-result
+                     (catched-call #'login session "oob"
+                                   (cli-oob-verifier-cb session))))
+                  (vom:debug "login-result = ~s" login-result)
+
+                  (when login-result
+                    (let ((my-user-id (nth 0 login-result))
+                          (my-screen-name (nth 1 login-result)))
+                      (write-config config-file
+                                    :consumer-key (oauth:consumer-key session)
+                                    :consumer-secret (oauth:consumer-secret session)
+                                    :access-token (oauth:token session)
+                                    :access-token-secret (oauth:token-secret session)
+                                    :user-id my-user-id
+                                    :screen-name my-screen-name
+                                    :db-file db-file)
+                      (call-with-retries
+                        #'(lambda ()
+                            (start-streaming
+                              session
+                              (make-message-cb
+                                my-user-id my-screen-name
+                                session #'message-cb)))
+                        #'remove-signal-handlers))))))))))
