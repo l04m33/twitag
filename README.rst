@@ -36,7 +36,16 @@ the ``main`` function,
 
     CL-USER> (ql:quickload :twitag)
     ...
-    CL-USER> (twitag:main "<consumer key>" "<consumer secret>" "<path to sqlite db file>")
+    CL-USER> (twitag:main "path/to/config/file")
+
+The config file should contain a plain a-list, which specifies your Twitter app
+credentials and a location for the DB file,
+
+.. code-block:: lisp
+
+    ((:consumer-key . "your consumer key")
+     (:consumer-secret . "your consumer secret")
+     (:db-file . "path/to/db/file"))
 
 The bot will then present an authorization URL and prompt for a verifier code.
 Just retrieve the verifier code from that URL and you are good to go.
